@@ -2,8 +2,9 @@ from PIL import Image, ImageDraw, ImageFont
 from pypinyin import pinyin
 
 PNG_SIZE = 400
-FONT_SIZE = 50
-
+CHINESE_FONT_SIZE = 60
+PINYIN_FONT_SIZE = 80
+PINYIN_SPACE = 30
 # 设置 A4 纸的大小，单位是像素
 # A4 尺寸是 210 x 297 mm，像素 = mm * DPI (例如，300 DPI)
 dpi = 300
@@ -29,7 +30,8 @@ def draw_pokemon(
     draw: ImageDraw.ImageDraw,
     position: tuple[int, int],
     pokemon: dict,
-    font,
+    pinyin_font: ImageFont.FreeTypeFont,
+    char_font: ImageFont.FreeTypeFont,
 ):
     name = pokemon["name"]
     pinyin_names = pinyin(name, v_to_u=True)
@@ -47,14 +49,14 @@ def draw_pokemon(
         char_pinyin = pinyins[i]
 
         # 计算拼音和汉字的宽度
-        pinyin_bbox = draw.textbbox((0, 0), char_pinyin, font=font)
-        char_bbox = draw.textbbox((0, 0), char, font=font)
+        pinyin_bbox = draw.textbbox((0, 0), char_pinyin, font=pinyin_font)
+        char_bbox = draw.textbbox((0, 0), char, font=char_font)
 
         pinyin_width = pinyin_bbox[2] - pinyin_bbox[0]
         char_width = char_bbox[2] - char_bbox[0]
 
         # 计算最大宽度
-        char_spacing = max(pinyin_width, char_width) + 10
+        char_spacing = max(pinyin_width, char_width) + PINYIN_SPACE
         total_width += char_spacing
 
     # 重新设置x，使其居中
@@ -65,23 +67,25 @@ def draw_pokemon(
         char_pinyin = pinyins[i]
 
         # 计算拼音和汉字的宽度
-        pinyin_bbox = draw.textbbox((0, 0), char_pinyin, font=font)
-        char_bbox = draw.textbbox((0, 0), char, font=font)
+        pinyin_bbox = draw.textbbox((0, 0), char_pinyin, font=pinyin_font)
+        char_bbox = draw.textbbox((0, 0), char, font=char_font)
 
         pinyin_width = pinyin_bbox[2] - pinyin_bbox[0]
         char_width = char_bbox[2] - char_bbox[0]
 
         # 计算最大宽度
-        char_spacing = max(pinyin_width, char_width) + 10
+        char_spacing = max(pinyin_width, char_width) + PINYIN_SPACE
 
         # 计算汉字的起始x位置，使其居中
         char_x = x + (pinyin_width - char_width) / 2
 
         # 画拼音
-        draw.text((x, y), char_pinyin, font=font, fill="black")
+        draw.text((x, y), char_pinyin, font=pinyin_font, fill="black")
 
         # 画汉字
-        draw.text((char_x, y + FONT_SIZE + 10), char, font=font, fill="black")
+        draw.text(
+            (char_x, y + PINYIN_FONT_SIZE + 20), char, font=char_font, fill="black"
+        )
 
         # 移动到下一个字符的位置
         x += char_spacing
@@ -90,36 +94,43 @@ def draw_pokemon(
     image = convert_transparent_to_white(pokemon["img_local_path"])
     image = image.resize((PNG_SIZE, PNG_SIZE))
     image_x = position[0] - PNG_SIZE // 2  # 将图片居中放置在文字正下方
-    image_y = y + FONT_SIZE + 80  # 80应该通过计算得来，暂时先写死
+    image_y = (
+        y + CHINESE_FONT_SIZE + PINYIN_FONT_SIZE + 80
+    )  # 80应该通过计算得来，暂时先写死
     image_pil = image.convert("RGBA")
     background.paste(image_pil, (image_x, image_y))
+
+    return total_width
 
 
 def draw_a4(
     pokemons: list[dict], output: str | None = None, font_path: str | None = None
 ):
     font_path = font_path or "./simhei/SimHei.ttf"  # 确保字体文件路径正确
-    font = ImageFont.truetype(font_path, FONT_SIZE)
+    pinyin_font = ImageFont.truetype(font_path, PINYIN_FONT_SIZE)
+    char_font = ImageFont.truetype(font_path, CHINESE_FONT_SIZE)
     output = output or "output_a4.png"
     # 创建白色背景的图像
     background = Image.new("RGB", (a4_width_px, a4_height_px), "white")
     draw = ImageDraw.Draw(background)
 
-    start_position = (250, 100)
+    start_position = (400, 100)
     x, y = start_position
     # todo: 计算得到
-    x_number = 5  # 横行
-    y_number = 6  # 纵向
+    x_number = 3  # 横行
+    y_number = 5  # 纵向
     for _ in range(y_number):
         for _ in range(x_number):
             if len(pokemons) == 0:
                 break
             pokemon = pokemons.pop(0)
-            draw_pokemon(background, draw, (x, y), pokemon, font)
-            x += PNG_SIZE + 100
+            total_width = draw_pokemon(
+                background, draw, (x, y), pokemon, pinyin_font, char_font=char_font
+            )
+            x += total_width + 140  # 横向+120
         else:
             x = start_position[0]
-            y += PNG_SIZE + FONT_SIZE + FONT_SIZE + 100
+            y += PNG_SIZE + CHINESE_FONT_SIZE + PINYIN_FONT_SIZE + 100
             continue  # 如果内层循环没有 break，则继续外层循环
         break  # 如果内层循环有 break，则直接跳出外层循环
 
