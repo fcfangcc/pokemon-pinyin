@@ -1,95 +1,120 @@
 import json
 import sys
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Optional
 
 import requests
 from lxml import html
 
 BASE_URL = "https://www.pokemon.cn"
+CACHE_DIR = Path("./.cache")
 
 
-def get_pokemon_name(tree):
-    PATH = '//*[contains(@class, "pokemon-slider__main-name")]'
-    elements = tree.xpath(PATH)
+def get_pokemon_name(tree: html.HtmlElement):
+    lxml_path = '//*[contains(@class, "pokemon-slider__main-name")]'
+    elements = tree.xpath(lxml_path)
     if len(elements) != 1:
         raise ValueError("获取名字失败")
     return elements[0].text_content().strip()
 
 
-def list_pokemon_attribute(tree):
-    PATH = '//*[contains(@class, "pokemon-type__type")]'
-    elements = tree.xpath(PATH)
+def list_pokemon_attribute(tree: html.HtmlElement):
+    lxml_path = '//*[contains(@class, "pokemon-type__type")]'
+    elements = tree.xpath(lxml_path)
     return [i.text_content().strip() for i in elements]
 
 
-def list_pokemon_weakness(tree):
-    PATH = '//*[contains(@class, "pokemon-weakness__btn")]'
-    elements = tree.xpath(PATH)
+def list_pokemon_weakness(tree: html.HtmlElement):
+    lxml_path = '//*[contains(@class, "pokemon-weakness__btn")]'
+    elements = tree.xpath(lxml_path)
     return [i.text_content().strip() for i in elements]
 
 
-def get_pokemon_img_url(tree):
-    PATH = '//*[contains(@class, "pokemon-img__front")]'
-    elements = tree.xpath(PATH)
+def get_pokemon_img_url(tree: html.HtmlElement):
+    lxml_path = '//*[contains(@class, "pokemon-img__front")]'
+    elements = tree.xpath(lxml_path)
     if len(elements) != 1:
         raise ValueError("获取img失败")
     return BASE_URL + elements[0].attrib["src"].strip()
 
 
-def download_pokemon_img(pokedex: int, url: str, to_dir: str) -> str | None:
-    dir_path = Path(to_dir)
-    if not dir_path.exists():
-        dir_path.mkdir(parents=True)
-        print(f"文件夹`{to_dir}`不存在，自动创建")
+def fetch_pokemon_html_element(pokedex: int) -> html.HtmlElement:
+    url = BASE_URL + f"/play/pokedex/{pokedex:04}"
+    response = requests.get(url, timeout=10)
+    if response.status_code != 200:
+        raise ValueError("get response error")
 
-    local_path = dir_path.joinpath(f"{pokedex:04}.png")
-    if Path(local_path).exists():
-        return local_path.absolute().as_posix()
-
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(local_path, "wb") as file:
-            file.write(response.content)
-        return local_path.absolute().as_posix()
-    else:
-        print("无法下载图片，状态码：", response.status_code)
-    return None
+    html_tree = html.fromstring(response.content)
+    return html_tree
 
 
-def get_pokemon(pokedex: int, download_img: bool = False):
-    cache_dir = Path("./.cache")
-    if not cache_dir.exists():
-        cache_dir.mkdir(parents=True)
+@dataclass
+class Pokemon:
+    pokedex: int
+    chinese_name: str
+    attributes: list[str]
+    weakness: list[str]
+    img_url: str
 
-    cache_path = cache_dir.joinpath(f"{pokedex}.json")
-    if cache_path.exists():
-        with open(cache_path, "rb") as f:
-            pokemon = json.load(f)
-    else:
-        url = BASE_URL + f"/play/pokedex/{pokedex:04}"
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            raise ValueError("get response error")
+    @classmethod
+    def from_pokemon_cn(cls, pokedex: int) -> "Pokemon":
+        if obj := cls.try_from_cache(pokedex):
+            return obj
 
-        html_tree = html.fromstring(response.content)
+        html_tree = fetch_pokemon_html_element(pokedex)
+        obj = cls(
+            pokedex=pokedex,
+            chinese_name=get_pokemon_name(html_tree),
+            attributes=list_pokemon_attribute(html_tree),
+            weakness=list_pokemon_weakness(html_tree),
+            img_url=get_pokemon_img_url(html_tree),
+        )
+        obj.save_to_cache()
+        return obj
+
+    @classmethod
+    def try_from_cache(cls, pokedex: int) -> Optional["Pokemon"]:
+        cache_path = CACHE_DIR.joinpath(f"{pokedex}.json")
+        if cache_path.exists():
+            with open(cache_path, "rb") as f:
+                pokemon = json.load(f)
+                return cls(**pokemon)
+
+        return None
+
+    @property
+    def pokemon_img_cache_path(self) -> Path:
+        img_cache_dir = CACHE_DIR.joinpath("pokemon_imgs")
+        if not img_cache_dir.exists():
+            img_cache_dir.mkdir(parents=True)
+        return img_cache_dir.joinpath(f"{self.pokedex:04}.png")
+
+    def save_to_cache(self):
+        if not CACHE_DIR.exists():
+            CACHE_DIR.mkdir(parents=True)
+        cache_path = CACHE_DIR.joinpath(f"{self.pokedex}.json")
         with open(cache_path, "w") as f:
-            pokemon = {}
-            pokemon["name"] = get_pokemon_name(html_tree)
-            pokemon["attributes"] = list_pokemon_attribute(html_tree)
-            pokemon["weakness"] = list_pokemon_weakness(html_tree)
-            pokemon["img_url"] = get_pokemon_img_url(html_tree)
-            if download_img:
-                img_local_path = download_pokemon_img(
-                    pokedex, pokemon["img_url"], "./imgs"
-                )
-                pokemon["img_local_path"] = img_local_path
-            json.dump(pokemon, f, indent=4)
-    return pokemon
+            json.dump(asdict(self), f, indent=4, ensure_ascii=False)
+
+    def download_pokemon_img(self, overwrite: bool = False) -> Path:
+        pokemon_img_cache_path = self.pokemon_img_cache_path
+        if pokemon_img_cache_path.exists() and not overwrite:
+            return pokemon_img_cache_path.absolute().as_posix()
+
+        response = requests.get(self.img_url, timeout=10)
+        if response.status_code == 200:
+            with open(pokemon_img_cache_path, "wb") as file:
+                file.write(response.content)
+            return pokemon_img_cache_path.absolute().as_posix()
+
+        raise ValueError("下载图片失败，状态码：", response.status_code)
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
     pokedexs = [int(i) for i in args]
     for pokedex in pokedexs:
-        pokemon = get_pokemon(pokedex, download_img=True)
+        pokemon = Pokemon.from_pokemon_cn(pokedex)
+        pokemon.download_pokemon_img()
         print(f"pokemon:{pokedex:04}, data: {pokemon}")

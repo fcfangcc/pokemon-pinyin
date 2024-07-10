@@ -3,11 +3,12 @@
 .ropeproject
 *.py[co]
 __pycache__
+.vscode
 
 # resources
 imgs/
 simhei/
 .DS_Store
-output_a4.png
+output_a4.*
 test.png
 .cache
