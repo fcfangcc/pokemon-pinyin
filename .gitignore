@@ -1,0 +1,13 @@
+# Python
+.v
+.ropeproject
+*.py[co]
+__pycache__
+
+# resources
+imgs/
+simhei/
+.DS_Store
+output_a4.png
+test.png
+.cache
