@@ -4,11 +4,13 @@
 *.py[co]
 __pycache__
 .vscode
+*.egg-info
+dist
 
 # resources
 imgs/
 simhei/
 .DS_Store
-output_a4.*
-test.png
+*.pdf
+*.png
 .cache

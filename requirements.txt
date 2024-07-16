@@ -2,4 +2,4 @@ requests~=2.32.3
 lxml~=5.2.2
 pypinyin~=0.51.0
 pillow~=10.4.0
-fire
+click

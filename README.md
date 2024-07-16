@@ -8,7 +8,23 @@
 
 ```shell
 # 绘画1-10号（包含10）
-python main.py range 1 10
+pp 1..10
 # 绘画1 3 5 7号
-python main.py choice 1 3 5 7
+pp 1,3,5,7
+# 绘画绘画1-10号，过滤某个字只包含m,a
+pp 1..10 -fb l,v
+
+```
+
+
+## package
+
+Publish package
+```
+python -m build
+```
+
+Development mode
+```
+pip install --editable .
 ```
