@@ -29,7 +29,7 @@ def create_searcher_data(output: str = "searcher.json"):
             )
         )
 
-    with open(output, "w") as f:
+    with open(output, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
 
 
@@ -49,7 +49,7 @@ class PokemonSearcher:
     @classmethod
     def load_from_json(cls, path: str = None):
         path = path or get_seacher_path()
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return PokemonSearcher(data)
 
@@ -69,7 +69,7 @@ class PokemonSearcher:
             return False
 
         return [
-            Pokemon.try_from_cache(i["pokedex"]) for i in filter(_helper, self._data)
+            Pokemon.from_pokemon_cn(i["pokedex"]) for i in filter(_helper, self._data)
         ]
 
     def any_only(self, *args) -> list[Pokemon]:
@@ -83,7 +83,7 @@ class PokemonSearcher:
             return False
 
         return [
-            Pokemon.try_from_cache(i["pokedex"]) for i in filter(_helper, self._data)
+            Pokemon.from_pokemon_cn(i["pokedex"]) for i in filter(_helper, self._data)
         ]
 
 

@@ -82,7 +82,7 @@ class Pokemon:
     def try_from_cache(cls, pokedex: int) -> Optional["Pokemon"]:
         cache_path = CACHE_DIR.pokemon_dir.joinpath(f"{pokedex}.json")
         if cache_path.exists():
-            with open(cache_path, "rb") as f:
+            with open(cache_path, "r", encoding="utf-8") as f:
                 pokemon = json.load(f)
                 return cls(**pokemon)
 
@@ -94,7 +94,7 @@ class Pokemon:
 
     def save_to_cache(self):
         cache_path = CACHE_DIR.pokemon_dir.joinpath(f"{self.pokedex}.json")
-        with open(cache_path, "w") as f:
+        with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(asdict(self), f, indent=4, ensure_ascii=False)
 
     def download_pokemon_img(self, overwrite: bool = False) -> Path:
