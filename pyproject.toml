@@ -15,7 +15,7 @@ requires-python = ">=3.10"
 dynamic = ["version"]
 
 [project.scripts]
-pp = "pokemon_pinyin.commands:main"
+ppinyin = "pokemon_pinyin.commands:main"
 
 [build-system]
 requires = ["setuptools>=70.0"]

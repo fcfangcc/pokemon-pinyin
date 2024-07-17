@@ -42,11 +42,11 @@ def run(
 
     examples:
 
-        pp 1,3,5
+        ppinyin 1,3,5
 
-        pp 1..5 --output=a.pdf
+        ppinyin 1..5 --output=a.pdf
 
-        pp -fy only -fb m,a
+        ppinyin -ft only -fb m,a
     """
     if not pokedexs:
         if not filter_by:
