@@ -42,15 +42,16 @@ def run(
 
     examples:
 
-        ppinyin 1,3,5
+        ppinyin run 1,3,5
 
-        ppinyin 1..5 --output=a.pdf
+        ppinyin run 1..5 --output=a.pdf
 
-        ppinyin -ft only -fb m,a
+        ppinyin run -ft only -fb m,a
     """
     if not pokedexs:
         if not filter_by:
-            raise click.BadParameter("--filter_by为空时必须指定编号范围")
+            click.echo("--filter_by为空时必须指定编号范围 --help查看帮助", err=True)
+            return
         pokedexs = range(1, MAX_POKEDEX + 1)
     elif ".." in pokedexs:
         start, end = pokedexs.strip().split("..", maxsplit=1)
@@ -58,13 +59,13 @@ def run(
         if start >= end or start < 1 or end > MAX_POKEDEX:
             raise click.BadParameter(f"开始和结束必须在1..{MAX_POKEDEX}以内")
         pokedexs = range(start, end + 1)
-        click.echo(f"开始绘画编号为{start}..{end}的宝可梦")
+        click.echo(f"选择编号为{start}..{end}的宝可梦")
     else:
         pokedexs = [int(i) for i in pokedexs.strip().split(",")]
         for i in pokedexs:
             if not 1 <= i <= MAX_POKEDEX:
                 raise click.BadParameter(f"开始和结束必须在1..{MAX_POKEDEX}以内")
-        click.echo(f"开始绘画编号为{pokedexs}的宝可梦")
+        click.echo(f"选择编号为{pokedexs}的宝可梦")
 
     if filter_by:
         filter_by = filter_by.strip().split(",")
@@ -81,7 +82,6 @@ def run(
         click.echo(f"共搜索到符合条件的宝可梦{len(pokemons)}只")
     else:
         pokemons = [Pokemon.from_pokemon_cn(i) for i in pokedexs]
-
     draw_pdf(PokemonIterator(pokemons), output, font_path=ttf, margin=margin)
 
 
@@ -100,7 +100,7 @@ def clear():
 
 
 def main():
-    cli(prog_name="pp", default_map={"cli": {"default_command": "run"}})
+    cli()
 
 
 if __name__ == "__main__":

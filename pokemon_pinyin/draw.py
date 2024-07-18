@@ -152,9 +152,6 @@ class PokemonBox:
             position[1] + self.box_height(),
         )
 
-    def draw_img(self, position: tuple[int, int]):
-        self.pokemon.download_pokemon_img()
-
 
 class PokemonIterator:
     def __init__(self, data: list[Pokemon]):
